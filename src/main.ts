@@ -29,11 +29,14 @@ async function getPRDetails(): Promise<PRDetails> {
   const { repository, number } = JSON.parse(
     readFileSync(process.env.GITHUB_EVENT_PATH || "", "utf8")
   );
+  console.log("Repository: ", repository);
+  console.log("PR number: ", number);
   const prResponse = await octokit.pulls.get({
     owner: repository.owner.login,
     repo: repository.name,
     pull_number: number,
   });
+  console.log("PR response: ", prResponse);
   return {
     owner: repository.owner.login,
     repo: repository.name,
@@ -185,7 +188,7 @@ async function main() {
   const eventData = JSON.parse(
     readFileSync(process.env.GITHUB_EVENT_PATH ?? "", "utf8")
   );
-
+  console.log("Event data: ", eventData)
   if (eventData.action === "opened") {
     diff = await getDiff(
       prDetails.owner,
@@ -193,21 +196,11 @@ async function main() {
       prDetails.pull_number
     );
   } else if (eventData.action === "synchronize") {
-    const newBaseSha = eventData.before;
-    const newHeadSha = eventData.after;
-
-    const response = await octokit.repos.compareCommits({
-      owner: prDetails.owner,
-      repo: prDetails.repo,
-      base: newBaseSha,
-      head: newHeadSha,
-    });
-    console.log("Git diff url: ", response.data.diff_url ?? null)
-    diff = response.data.diff_url
-      ? await octokit
-          .request({ url: response.data.diff_url })
-          .then((res) => res.data)
-      : null;
+    diff = await getDiff(
+        prDetails.owner,
+        prDetails.repo,
+        prDetails.pull_number
+    );
   } else {
     console.log("Unsupported event:", process.env.GITHUB_EVENT_NAME);
     return;
